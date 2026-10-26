@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,7 +17,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="SignalDesk AI API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Local development only; lock this down before deployment.
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -84,3 +87,11 @@ def get_ticket(ticket_id: int, db: Session = Depends(get_db)):
         **result,
         "created_at": row.created_at,
     }
+
+
+# In production the Docker image copies the built React app here, allowing
+# frontend and API to share one public origin. During local development this
+# folder does not exist, so Vite serves the frontend separately.
+static_dir = Path(__file__).resolve().parent.parent / "static"
+if static_dir.exists():
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="frontend")
